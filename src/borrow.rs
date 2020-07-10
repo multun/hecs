@@ -68,7 +68,8 @@ pub struct Ref<'a, T: Component> {
 }
 
 impl<'a, T: Component> Ref<'a, T> {
-    pub(crate) unsafe fn new(
+    #[allow(missing_docs)]
+    pub unsafe fn new(
         archetype: &'a Archetype,
         index: u32,
     ) -> Result<Self, MissingComponent> {
@@ -107,7 +108,8 @@ pub struct RefMut<'a, T: Component> {
 }
 
 impl<'a, T: Component> RefMut<'a, T> {
-    pub(crate) unsafe fn new(
+    #[allow(missing_docs)]
+    pub unsafe fn new(
         archetype: &'a Archetype,
         index: u32,
     ) -> Result<Self, MissingComponent> {
