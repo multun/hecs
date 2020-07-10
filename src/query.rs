@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use core::marker::PhantomData;
-use core::ptr::NonNull;
+use core::{marker::PhantomData, ptr::NonNull};
 
-use crate::archetype::Archetype;
-use crate::{Entity, Component};
+use crate::{archetype::Archetype, Component, Entity};
 
 /// A collection of component types to fetch from a `World`
 pub trait Query {
@@ -520,9 +518,7 @@ struct ChunkIter<Q: Query> {
 
 impl<Q: Query> ChunkIter<Q> {
     #[inline]
-    unsafe fn next<'a, 'w>(
-        &mut self,
-    ) -> Option<<Q::Fetch as Fetch<'a>>::Item> {
+    unsafe fn next<'a, 'w>(&mut self) -> Option<<Q::Fetch as Fetch<'a>>::Item> {
         if self.len == 0 {
             return None;
         }

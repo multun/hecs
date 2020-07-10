@@ -16,9 +16,9 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
+use proc_macro_crate::crate_name;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput, Path};
-use proc_macro_crate::crate_name;
 
 /// Implement `Bundle` for a monomorphic struct
 ///
