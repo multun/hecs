@@ -133,6 +133,13 @@ impl Archetype {
     }
 
     #[allow(missing_docs)]
+    #[inline]
+    pub fn get_added<T: Component>(&self) -> Option<NonNull<bool>> {
+        let state = self.state.get(&TypeId::of::<T>())?;
+        Some(unsafe { NonNull::new_unchecked(state.added_entities.as_ptr() as *mut bool) })
+    }
+
+    #[allow(missing_docs)]
     pub fn get_type_state_mut(&mut self, ty: TypeId) -> Option<&mut TypeState> {
         self.state.get_mut(&ty)
     }
@@ -256,6 +263,7 @@ impl Archetype {
 
             for type_state in self.state.values_mut() {
                 type_state.modified_entities.resize_with(count, || false);
+                type_state.added_entities.resize_with(count, || false);
             }
 
             let old_data_size = mem::replace(&mut self.data_size, 0);
@@ -316,6 +324,7 @@ impl Archetype {
 
                 let type_state = self.state.get_mut(&ty.id).unwrap();
                 type_state.modified_entities[index as usize] = type_state.modified_entities[last as usize]; 
+                type_state.added_entities[index as usize] = type_state.added_entities[last as usize]; 
             }
         }
         self.len = last;
@@ -331,7 +340,7 @@ impl Archetype {
     pub(crate) unsafe fn move_to(
         &mut self,
         index: u32,
-        mut f: impl FnMut(*mut u8, TypeId, usize, bool),
+        mut f: impl FnMut(*mut u8, TypeId, usize, bool, bool),
     ) -> Option<u32> {
         let last = self.len - 1;
         for ty in &self.types {
@@ -340,8 +349,9 @@ impl Archetype {
                 .unwrap()
                 .as_ptr();
             let type_state = self.state.get(&ty.id).unwrap();
+            let is_added= type_state.added_entities[index as usize];
             let is_modified = type_state.modified_entities[index as usize];
-            f(moved, ty.id(), ty.layout().size(), is_modified);
+            f(moved, ty.id(), ty.layout().size(), is_added, is_modified);
             if index != last {
                 ptr::copy_nonoverlapping(
                     self.get_dynamic(ty.id, ty.layout.size(), last)
@@ -351,6 +361,7 @@ impl Archetype {
                     ty.layout.size(),
                 );
                 let type_state = self.state.get_mut(&ty.id).unwrap();
+                type_state.added_entities[index as usize] = type_state.added_entities[last as usize]; 
                 type_state.modified_entities[index as usize] = type_state.modified_entities[last as usize]; 
             }
         }
@@ -364,12 +375,15 @@ impl Archetype {
     }
 
     #[allow(missing_docs)]
-    pub unsafe fn put_dynamic(&mut self, component: *mut u8, ty: TypeId, size: usize, index: u32) {
-        let ptr = self
-            .get_dynamic(ty, size, index)
-            .unwrap()
-            .as_ptr()
-            .cast::<u8>();
+    pub unsafe fn put_dynamic(&mut self, component: *mut u8, ty: TypeId, size: usize, index: u32, added: bool) {
+        let state = self.state.get_mut(&ty).unwrap();
+        if added {
+            state.added_entities[index as usize] = true;
+        }
+        let ptr = (*self.data.get())
+                .as_ptr()
+                .add(state.offset + size * index as usize)
+                .cast::<u8>();
         ptr::copy_nonoverlapping(component, ptr, size);
     }
 
@@ -400,6 +414,7 @@ pub struct TypeState {
     offset: usize,
     borrow: AtomicBorrow,
     pub modified_entities: Vec<bool>,
+    pub added_entities: Vec<bool>,
 }
 
 impl TypeState {
@@ -408,12 +423,17 @@ impl TypeState {
             offset: 0,
             borrow: AtomicBorrow::new(),
             modified_entities: Vec::new(),
+            added_entities: Vec::new(),
         }
     }
 
     fn clear_trackers(&mut self) {
         for modified in self.modified_entities.iter_mut() {
             *modified = false;
+        }
+
+        for added in self.added_entities.iter_mut() {
+            *added = false;
         }
     }
 }
