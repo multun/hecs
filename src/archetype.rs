@@ -138,7 +138,9 @@ impl Archetype {
 
     #[allow(missing_docs)]
     #[inline]
-    pub fn get_with_added_and_mutated<T: Component>(&self) -> Option<(NonNull<T>, NonNull<bool>, NonNull<bool>)> {
+    pub fn get_with_added_and_mutated<T: Component>(
+        &self,
+    ) -> Option<(NonNull<T>, NonNull<bool>, NonNull<bool>)> {
         let state = self.state.get(&TypeId::of::<T>())?;
         Some(unsafe {
             (
@@ -349,8 +351,10 @@ impl Archetype {
                 );
 
                 let type_state = self.state.get_mut(&ty.id).unwrap();
-                type_state.mutated_entities[index as usize] = type_state.mutated_entities[last as usize]; 
-                type_state.added_entities[index as usize] = type_state.added_entities[last as usize]; 
+                type_state.mutated_entities[index as usize] =
+                    type_state.mutated_entities[last as usize];
+                type_state.added_entities[index as usize] =
+                    type_state.added_entities[last as usize];
             }
         }
         self.len = last;
@@ -375,7 +379,7 @@ impl Archetype {
                 .unwrap()
                 .as_ptr();
             let type_state = self.state.get(&ty.id).unwrap();
-            let is_added= type_state.added_entities[index as usize];
+            let is_added = type_state.added_entities[index as usize];
             let is_mutated = type_state.mutated_entities[index as usize];
             f(moved, ty.id(), ty.layout().size(), is_added, is_mutated);
             if index != last {
@@ -387,8 +391,10 @@ impl Archetype {
                     ty.layout.size(),
                 );
                 let type_state = self.state.get_mut(&ty.id).unwrap();
-                type_state.added_entities[index as usize] = type_state.added_entities[last as usize]; 
-                type_state.mutated_entities[index as usize] = type_state.mutated_entities[last as usize]; 
+                type_state.added_entities[index as usize] =
+                    type_state.added_entities[last as usize];
+                type_state.mutated_entities[index as usize] =
+                    type_state.mutated_entities[last as usize];
             }
         }
         self.len -= 1;
@@ -401,15 +407,22 @@ impl Archetype {
     }
 
     #[allow(missing_docs)]
-    pub unsafe fn put_dynamic(&mut self, component: *mut u8, ty: TypeId, size: usize, index: u32, added: bool) {
+    pub unsafe fn put_dynamic(
+        &mut self,
+        component: *mut u8,
+        ty: TypeId,
+        size: usize,
+        index: u32,
+        added: bool,
+    ) {
         let state = self.state.get_mut(&ty).unwrap();
         if added {
             state.added_entities[index as usize] = true;
         }
         let ptr = (*self.data.get())
-                .as_ptr()
-                .add(state.offset + size * index as usize)
-                .cast::<u8>();
+            .as_ptr()
+            .add(state.offset + size * index as usize)
+            .cast::<u8>();
         ptr::copy_nonoverlapping(component, ptr, size);
     }
 
