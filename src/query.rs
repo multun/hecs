@@ -79,18 +79,22 @@ impl Query for Entity {
 
 impl<'a> Fetch<'a> for EntityFetch {
     type Item = Entity;
+
     #[inline]
     fn access(_archetype: &Archetype) -> Option<Access> {
         Some(Access::Iterate)
     }
+
     #[inline]
     fn borrow(_archetype: &Archetype) {}
+
     #[inline]
     unsafe fn get(archetype: &'a Archetype, offset: usize) -> Option<Self> {
         Some(EntityFetch(NonNull::new_unchecked(
             archetype.entities().as_ptr().add(offset),
         )))
     }
+
     #[inline]
     fn release(_archetype: &Archetype) {}
 
@@ -130,6 +134,7 @@ impl<'a, T: Component> Fetch<'a> for FetchRead<T> {
             .get::<T>()
             .map(|x| Self(NonNull::new_unchecked(x.as_ptr().add(offset))))
     }
+
     fn release(archetype: &Archetype) {
         archetype.release::<T>();
     }
@@ -161,6 +166,7 @@ unsafe impl<T: Component> Sync for Mut<'_, T> {}
 
 impl<'a, T: Component> Deref for Mut<'a, T> {
     type Target = T;
+
     #[inline]
     fn deref(&self) -> &T {
         self.value
@@ -195,6 +201,7 @@ impl<'a, T: Component> Fetch<'a> for FetchMut<T> {
     fn borrow(archetype: &Archetype) {
         archetype.borrow_mut::<T>();
     }
+
     unsafe fn get(archetype: &'a Archetype, offset: usize) -> Option<Self> {
         archetype
             .get_with_mutated::<T>()
@@ -205,6 +212,7 @@ impl<'a, T: Component> Fetch<'a> for FetchMut<T> {
                 )
             })
     }
+
     fn release(archetype: &Archetype) {
         archetype.release_mut::<T>();
     }
@@ -229,6 +237,7 @@ pub struct Mutated<'a, T> {
 
 impl<'a, T: Component> Deref for Mutated<'a, T> {
     type Target = T;
+
     #[inline]
     fn deref(&self) -> &T {
         self.value
@@ -256,6 +265,7 @@ impl<'a, T: Component> Fetch<'a> for FetchMutated<T> {
     fn borrow(archetype: &Archetype) {
         archetype.borrow::<T>();
     }
+
     unsafe fn get(archetype: &'a Archetype, offset: usize) -> Option<Self> {
         archetype
             .get_with_mutated::<T>()
@@ -266,6 +276,7 @@ impl<'a, T: Component> Fetch<'a> for FetchMutated<T> {
                 )
             })
     }
+
     fn release(archetype: &Archetype) {
         archetype.release::<T>();
     }
@@ -291,6 +302,7 @@ pub struct Added<'a, T> {
 
 impl<'a, T: Component> Deref for Added<'a, T> {
     type Target = T;
+
     #[inline]
     fn deref(&self) -> &T {
         self.value
@@ -318,6 +330,7 @@ impl<'a, T: Component> Fetch<'a> for FetchAdded<T> {
     fn borrow(archetype: &Archetype) {
         archetype.borrow::<T>();
     }
+
     unsafe fn get(archetype: &'a Archetype, offset: usize) -> Option<Self> {
         archetype.get_with_added::<T>().map(|(components, added)| {
             Self(
@@ -326,6 +339,7 @@ impl<'a, T: Component> Fetch<'a> for FetchAdded<T> {
             )
         })
     }
+
     fn release(archetype: &Archetype) {
         archetype.release::<T>();
     }
@@ -351,6 +365,7 @@ pub struct Changed<'a, T> {
 
 impl<'a, T: Component> Deref for Changed<'a, T> {
     type Target = T;
+
     #[inline]
     fn deref(&self) -> &T {
         self.value
@@ -390,6 +405,7 @@ impl<'a, T: Component> Fetch<'a> for FetchChanged<T> {
                 )
             })
     }
+
     fn release(archetype: &Archetype) {
         archetype.release::<T>();
     }
@@ -422,9 +438,11 @@ impl<'a, T: Fetch<'a>> Fetch<'a> for TryFetch<T> {
     fn borrow(archetype: &Archetype) {
         T::borrow(archetype)
     }
+
     unsafe fn get(archetype: &'a Archetype, offset: usize) -> Option<Self> {
         Some(Self(T::get(archetype, offset)))
     }
+
     fn release(archetype: &Archetype) {
         T::release(archetype)
     }
@@ -478,12 +496,14 @@ impl<'a, T: Component, F: Fetch<'a>> Fetch<'a> for FetchWithout<T, F> {
     fn borrow(archetype: &Archetype) {
         F::borrow(archetype)
     }
+
     unsafe fn get(archetype: &'a Archetype, offset: usize) -> Option<Self> {
         if archetype.has::<T>() {
             return None;
         }
         Some(Self(F::get(archetype, offset)?, PhantomData))
     }
+
     fn release(archetype: &Archetype) {
         F::release(archetype)
     }
@@ -539,12 +559,14 @@ impl<'a, T: Component, F: Fetch<'a>> Fetch<'a> for FetchWith<T, F> {
     fn borrow(archetype: &Archetype) {
         F::borrow(archetype)
     }
+
     unsafe fn get(archetype: &'a Archetype, offset: usize) -> Option<Self> {
         if !archetype.has::<T>() {
             return None;
         }
         Some(Self(F::get(archetype, offset)?, PhantomData))
     }
+
     fn release(archetype: &Archetype) {
         F::release(archetype)
     }
@@ -693,8 +715,8 @@ impl<'w, Q: Query> Drop for QueryBorrow<'w, Q> {
 }
 
 impl<'q, 'w, Q: Query> IntoIterator for &'q mut QueryBorrow<'w, Q> {
-    type Item = <Q::Fetch as Fetch<'q>>::Item;
     type IntoIter = QueryIter<'q, 'w, Q>;
+    type Item = <Q::Fetch as Fetch<'q>>::Item;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
