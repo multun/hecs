@@ -31,20 +31,44 @@ use hashbrown::HashMap;
 
 use crate::{borrow::AtomicBorrow, query::Fetch, Access, Component, Query};
 
+
 /// A collection of entities having the same component types
 ///
 /// Accessing `Archetype`s is only required for complex dynamic scheduling. To manipulate entities,
 /// go through the `World`.
 pub struct Archetype {
+    /// Type metadata of the components
     types: Vec<TypeInfo>,
+    /// Metadata about the state of each component array
     state: HashMap<TypeId, TypeState>,
+    /// Number of entities in the archetype
     len: u32,
+    /// Pool of all entities, including reserved but not allocated ones
     entities: Box<[u32]>,
     // UnsafeCell allows unique references into `data` to be constructed while shared references
     // containing the `Archetype` exist
     data: UnsafeCell<NonNull<u8>>,
     data_size: usize,
     grow_size: u32,
+}
+
+/// The state of a component
+pub struct TypeState {
+    offset: usize,
+    borrow: AtomicBorrow,
+    pub mutated_entities: Vec<bool>,
+    pub added_entities: Vec<bool>,
+}
+
+/// Metadata required to store a component
+#[derive(Debug, Copy, Clone)]
+pub struct TypeInfo {
+    /// The type identifier
+    id: TypeId,
+    /// The size and alignment of the block
+    layout: Layout,
+    /// The destructor
+    drop: unsafe fn(*mut u8),
 }
 
 impl Archetype {
@@ -451,13 +475,6 @@ impl Drop for Archetype {
     }
 }
 
-pub struct TypeState {
-    offset: usize,
-    borrow: AtomicBorrow,
-    pub mutated_entities: Vec<bool>,
-    pub added_entities: Vec<bool>,
-}
-
 impl TypeState {
     fn new() -> Self {
         Self {
@@ -477,14 +494,6 @@ impl TypeState {
             *added = false;
         }
     }
-}
-
-/// Metadata required to store a component
-#[derive(Debug, Copy, Clone)]
-pub struct TypeInfo {
-    id: TypeId,
-    layout: Layout,
-    drop: unsafe fn(*mut u8),
 }
 
 impl TypeInfo {
